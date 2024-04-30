@@ -1,57 +1,64 @@
-// Import necessary modules
 const express = require('express');
-const mysql = require('mysql');
+const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const Book = require('./Book');
 
-// Create an instance of Express
 const app = express();
-const PORT = 3000;
 
-// Middleware to parse JSON bodies
+// Middleware
 app.use(bodyParser.json());
 
-// MySQL connection configuration
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'demo2'
-});
-
-// Connect to MySQL
-db.connect((err) => {
-    if (err) {
-        throw err;
-    }
-    console.log('Connected to MySQL database');
-});
+// Connect to MongoDB
+mongoose.connect('mongodb+srv://rajputgopal321:TyASdV1OZWUbj859@cluster0.jrzkc6t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.log(err));
 
 // Routes
-
-app.get('/api/users', (req, res) => {
-    const sql = 'SELECT * FROM data';
-    db.query(sql, (err, results) => {
-        if (err) {
-            throw err;
-        }
-        res.json(results);
-    });
+// GET all books
+app.get('/api/books', async (req, res) => {
+  try {
+    const books = await Book.find();
+    res.json(books);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
 });
 
-
-
-app.post('/api/users', (req, res) => {
-    const { name, email, position } = req.body;
-    const sql = 'INSERT INTO data (username,password) VALUES (?, ?)';
-    db.query(sql, [username,password], (err, result) => {
-        if (err) {
-            throw err;
-        }
-        res.status(201).json({username,password });
-    });
+// POST a new book
+app.post('/api/books', async (req, res) => {
+  try {
+    const { title, author, genre } = req.body;
+    const newBook = new Book({ title, author, genre });
+    const savedBook = await newBook.save();
+    res.status(201).json(savedBook);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
 });
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// PUT update a book
+app.put('/api/books/:id', async (req, res) => {
+  try {
+    const updatedBook = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedBook);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
 });
+
+// DELETE a book
+app.delete('/api/books/:id', async (req, res) => {
+  try {
+    await Book.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Book deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
